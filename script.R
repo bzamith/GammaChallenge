@@ -1,5 +1,3 @@
-setwd("~/Documents/Faculdade/10o_Semestre/BCG Datathon/Banco Datathon/Banco Datathon")
-
 #=======================================================================================
 # CRIA TABELA UNIFICADA
 #=======================================================================================
@@ -66,6 +64,7 @@ write.csv(mort_linfoma,"mort_linfoma_unificado.csv")
 #=======================================================================================
 
 library("stringr")
+library("geosphere")
 apac_linfoma$AP_CMP = as.character(apac_linfoma$AP_CMP)
 
 # Le base
@@ -119,8 +118,20 @@ apac_linfoma$QTD_UBS[apac_linfoma$QTD_UBS=='-1'] = '0'
 apac_linfoma$QTD_UADT[apac_linfoma$QTD_UADT=='-1'] = '0'
 
 # Pega UF
-apac_linfoma = retornaUF(apac_linfoma)
+apac_linfoma = retorna_UF(apac_linfoma)
 apac_linfoma = apac_linfoma[,2:ncol(apac_linfoma)]
+
+# Calcula distancias
+# Fonte: https://github.com/kelvins/Municipios-Brasileiros
+municipios = read.csv("municipios.csv")
+municipios$codigo_ibge = substr(municipios$codigo_ibge,1,6)
+apac_linfoma = pega_distancias(apac_linfoma,municipios)
 
 #Escreve CSVs 
 write.csv(apac_linfoma,"apac_linfoma_unificado2.csv")
+
+#=======================================================================================
+# PEGA APACS PRIMEIRAS
+#=======================================================================================
+
+apac_linfoma_unica = cria_df_primeira_apac(apac_linfoma)

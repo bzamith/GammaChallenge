@@ -30,7 +30,25 @@ convert_mort = function(dataset,colunas){
 }
 
 #Cria a base de dados referente às primeiras APACs 
+get_month_dif_mean = function(df_id){
+  dif_meses = 0
+  for(j in 1:nrow(df_id)){
+    #Processamento
+    ano_proc = as.numeric(substr(df_id[j,'AP_MVM'], 1,4))
+    mes_proc = as.numeric(substr(df_id[j,'AP_MVM'], 5,6))
+    #Atendimento
+    ano_atend = as.numeric(substr(df_id[j,'AP_CMP'], 1,4))
+    mes_atend = as.numeric(substr(df_id[j,'AP_CMP'], 5,6))
+    
+    dif_meses = dif_meses + (ano_proc - ano_atend)*12 + (mes_proc - mes_atend)
+  }
+  #cat(dif_meses)
+  return(dif_meses/nrow(df_id))
+}
+
+#Cria a base de dados referente às primeiras APACs 
 cria_df_primeira_apac = function(df){
+  df = na.omit(df, cols="AP_CNSPCN")
   hashNumbers = df$AP_CNSPCN
   hashNumbersUnique = unique(hashNumbers)
   
@@ -45,8 +63,26 @@ cria_df_primeira_apac = function(df){
     line_to_add$MAX_VAL = max(df_id$AP_VL_AP)
     line_to_add$MEAN_VAL = mean(df_id$AP_VL_AP)
     line_to_add$NUM_APACS = length(df_id$AP_CMP)
-    line_to_add$QTD_LEITOS = mean(df_id$qtd_leitos)
-    line_to_add$QTD_MEDICOS = mean(df_id$qtd_medicos)
+    line_to_add$QTD_LEITOS = mean(df_id$QTD_LEITOS)
+    line_to_add$QTD_MEDICOS = mean(df_id$QTD_MEDICOS)
+    line_to_add$QTD_HESP = mean(df_id$QTD_HESP)
+    line_to_add$QTD_HGERAL = mean(df_id$QTD_HGERAL)
+    line_to_add$QTD_CESP = mean(df_id$QTD_CESP)
+    line_to_add$QTD_UBS = mean(df_id$QTD_UBS)
+    line_to_add$QTD_UADT = mean(df_id$QTD_UADT)
+    
+    #LO_P LA_P LO_H LA_H DISTANCIA
+    #Distancias
+    line_to_add$MIN_DIST = min(df_id$DISTANCIA)
+    line_to_add$MEAN_DIST = mean(df_id$DISTANCIA)
+    line_to_add$MAX_DIST = max(df_id$DISTANCIA)
+    
+    #AP_MVM = data do processamento
+    #AP_CMP = data do atendimento
+    #print(df_id[,c('AP_MVM', 'AP_CMP', 'AP_AUTORIZ')], digits = 12)
+    line_to_add$MEDIA_MES_ATEND = get_month_dif_mean(df_id)
+    
+    line_to_add$NRO_DIF_HOSP = length(unique(df_id$AP_CODUNI))
     
     if(i==1){
       df_final = line_to_add
@@ -103,7 +139,7 @@ cruza = function(apac_linfoma){
 }
 
 # Retorna UF
-retornaUF = function(dataset){
+retorna_UF = function(dataset){
   for(i in 1:nrow(dataset)){
     cod_uf = substr(dataset[i,'AP_MUNPCN'],1,2)
     if(cod_uf=='11')
@@ -164,3 +200,33 @@ retornaUF = function(dataset){
   return(dataset)
 }
 
+pega_distancias = function(dataset,municipios){
+  for(i in 1:nrow(dataset)){
+    pessoa = grep(dataset[i,'AP_MUNPCN'],municipios$codigo_ibge)
+    hospital = grep(dataset[i,'AP_UFMUN'],municipios$codigo_ibge)
+    dataset[i,'LO_P'] = -1
+    dataset[i,'LA_P'] = -1
+    dataset[i,'LO_H'] = -1
+    dataset[i,'LA_H'] = -1
+    if(length(pessoa)!=0){
+      dataset[i,'LO_P'] = municipios[pessoa,'longitude']
+      dataset[i,'LA_P'] = municipios[pessoa,'latitude']
+    }
+    if(length(hospital)!=0){
+      dataset[i,'LO_H'] = municipios[hospital,'longitude']
+      dataset[i,'LA_H'] = municipios[hospital,'latitude']
+    }
+    dataset[i,'DISTANCIA'] = -1
+    if(length(pessoa)!=0 && length(hospital)){
+      if(pessoa == hospital){
+        dataset[i,'DISTANCIA'] = 0.0
+      }
+      else{
+        dataset[i,'DISTANCIA'] = distm(c(dataset[i,'LO_P'],dataset[i,'LA_P']),c(dataset[i,'LO_H'],dataset[i,'LA_H']),fun = distHaversine)[1]/1000
+      }
+    }
+    cat(i)
+    cat(" ")
+  }
+  return(dataset)
+}
